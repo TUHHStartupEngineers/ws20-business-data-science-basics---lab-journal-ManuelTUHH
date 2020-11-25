@@ -25,6 +25,7 @@
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
 <link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 <link href="site_libs/anchor-sections-1.0/anchor-sections.css" rel="stylesheet" />
@@ -262,6 +263,9 @@ $(document).ready(function () {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -401,6 +405,14 @@ div.tocify {
 
 <div class="fluid-row" id="header">
 
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">Journal (reproducible report)</h1>
@@ -412,10 +424,201 @@ div.tocify {
 
 <p><strong>IMPORTANT:</strong> You can delete everything in here and start fresh. You might want to start by not deleting anything above this line until you know what that stuff is doing.</p>
 <p>This is an <code>.Rmd</code> file. It is plain text with special features. Any time you write just like this, it will be compiled to normal text in the website. If you put a # in front of your text, it will create a top level-header.</p>
-<div id="my-first-post" class="section level1">
-<h1><span class="header-section-number">1</span> My first post</h1>
-<p>Last compiled: 2020-11-23</p>
-<p>Notice that whatever you define as a top level header, automatically gets put into the table of contents bar on the left.</p>
+<div id="challenge-1" class="section level1">
+<h1><span class="header-section-number">1</span> CHALLENGE 1</h1>
+<p>Last compiled: 2020-11-25</p>
+<pre class="r"><code># Data Science at TUHH ------------------------------------------------------
+# SALES ANALYSIS ----
+
+# 1.0 Load libraries ----
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+# 2.0 Importing Files ----
+bikes_tbl &lt;- read_excel(&quot;00_data/01_bike_sales/01_raw_data/bikes.xlsx&quot;)
+bikeshops_tbl &lt;- read_excel(&quot;00_data/01_bike_sales/01_raw_data/bikeshops.xlsx&quot;)
+orderlines_tbl &lt;- read_excel(&quot;00_data/01_bike_sales/01_raw_data/orderlines.xlsx&quot;)
+
+# 4.0 Joining Data ----
+bike_orderlines_joined_tbl &lt;- orderlines_tbl %&gt;%
+  left_join(bikes_tbl, by = c(&quot;product.id&quot; = &quot;bike.id&quot;)) %&gt;%
+  left_join(bikeshops_tbl, by = c(&quot;customer.id&quot; = &quot;bikeshop.id&quot;))
+
+# 5.0 Wrangling Data
+
+bike_orderlines_wrangled_tbl &lt;- bike_orderlines_joined_tbl %&gt;%
+
+    # 5.1 Separate category name
+  separate(col    = category,
+           into   = c(&quot;category.1&quot;, &quot;category.2&quot;, &quot;category.3&quot;),
+           sep    = &quot; - &quot;) %&gt;%
+  
+  # 5.2 Add the total price (price * quantity) 
+  mutate(total.price = price * quantity) %&gt;%
+  
+  # 5.3 Reorganize
+  select(-...1, -gender) %&gt;%
+  select(-ends_with(&quot;.id&quot;)) %&gt;%
+  bind_cols(bike_orderlines_joined_tbl %&gt;% select(order.id)) %&gt;% 
+  select(order.id, contains(&quot;order&quot;), contains(&quot;model&quot;), contains(&quot;category&quot;),
+         price, quantity, total.price,
+         everything()) %&gt;%
+  rename(bikeshop = name) %&gt;%
+  set_names(names(.) %&gt;% str_replace_all(&quot;\\.&quot;, &quot;_&quot;))
+
+
+####### Challenge
+
+##### Sales by State - Manipulate
+
+sales_by_state_tbl &lt;- bike_orderlines_wrangled_tbl %&gt;%
+  
+  separate(col = location,
+           into = c(&#39;city&#39;, &#39;state&#39;),
+           sep = &#39;, &#39;,
+           convert = T) %&gt;%
+  
+  select(state, total_price) %&gt;%
+  
+  group_by(state)  %&gt;%
+  
+  summarize(sales = sum(total_price)) %&gt;%
+  
+  arrange(state) %&gt;%
+  
+  mutate(sales_text = scales::dollar(sales, big.mark = &quot;.&quot;, 
+                                     decimal.mark = &quot;,&quot;, 
+                                     prefix = &quot;&quot;, 
+                                     suffix = &quot; €&quot;))
+
+#### Sales by State and Year - Manipulate
+
+sales_by_state_and_year_tbl &lt;- bike_orderlines_wrangled_tbl %&gt;%
+  
+  separate(col = location,
+           into = c(&#39;city&#39;, &#39;state&#39;),
+           sep = &#39;, &#39;,
+           convert = T) %&gt;%
+  
+  mutate(year = year(order_date)) %&gt;%
+  
+  select(state, year, total_price) %&gt;%
+  
+  group_by(state, year)  %&gt;%
+
+  summarize(sales = sum(total_price)) %&gt;%
+  
+  arrange(state, year) %&gt;%
+  
+  mutate(sales_text = scales::dollar(sales, big.mark = &quot;.&quot;, 
+                                     decimal.mark = &quot;,&quot;, 
+                                     prefix = &quot;&quot;, 
+                                     suffix = &quot; €&quot;))
+
+
+
+plotti &lt;- function(loc_data, loc_city) {
+  
+    eval(as.name(loc_data)) %&gt;%
+
+    ggplot(aes(x = year, y = sales)) +
+
+    geom_col(fill = &quot;#008E19&quot;) +
+
+    theme_minimal(base_size = 15) +
+
+    geom_label(aes(label = sales_text)) +
+    
+    geom_smooth(method = &quot;lm&quot;, se = FALSE) +
+
+    scale_y_continuous(labels =
+              scales::dollar_format(big.mark = &quot;.&quot;,
+              decimal.mark = &quot;,&quot;,
+              prefix = &quot;&quot;,
+              suffix = &quot; €&quot;)) +
+    
+    labs(title = paste(&quot;Revenue by year in &quot;,
+              loc_city, sep=&quot;&quot;),
+              x = &quot;Year&quot;,
+              y = &quot;Revenue&quot;)
+}
+
+for (jj in c(1:nrow(sales_by_state_tbl))) {
+
+  assign(
+    paste(&quot;sales_in_&quot;, 
+          sales_by_state_tbl[jj,1], 
+          sep = &#39;&#39;),
+    sales_by_state_and_year_tbl[sales_by_state_and_year_tbl$state == sales_by_state_tbl[[jj,1]],]
+        )
+}</code></pre>
+<pre class="r"><code>## Sales by State - Visualize
+
+sales_by_state_tbl %&gt;%
+  
+  arrange(sales) %&gt;%
+  
+  mutate(state = factor(state, levels = state)) %&gt;%
+  
+  ggplot(aes(x = state, y = sales)) +
+
+  geom_col(fill = &quot;#008E19&quot;) +
+
+  theme_minimal(base_size = 15) +
+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+
+  geom_label(aes(label = sales_text)) +
+
+  scale_y_continuous(labels = scales::dollar_format(big.mark = &quot;.&quot;,
+                                                    decimal.mark = &quot;,&quot;,
+                                                    prefix = &quot;&quot;,
+                                                    suffix = &quot; €&quot;)) +
+  labs(
+    title    = &quot;Revenue by state&quot;,
+    x = &quot;State&quot;,
+    y = &quot;Revenue&quot;
+  )</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.1-1.png" width="1248" /></p>
+<pre class="r"><code>## Sales by State and Year - Visualize
+ 
+plotti(loc_data = &quot;sales_in_Baden-Württemberg&quot;,
+       loc_city = &quot;Baden-Württemberg&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-1.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Bavaria&quot;,
+       loc_city = &quot;Bavaria&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-2.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Berlin&quot;,
+       loc_city = &quot;Berlin&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-3.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Bremen&quot;,
+       loc_city = &quot;Bremen&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-4.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Hamburg&quot;,
+       loc_city = &quot;Hamburg&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-5.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Hesse&quot;,
+       loc_city = &quot;Hesse&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-6.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Lower Saxony&quot;,
+       loc_city = &quot;Lower Saxony&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-7.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Mecklenburg-Western Pomerania&quot;,
+       loc_city = &quot;Mecklenburg-Western Pomerania&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-8.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_North Rhine-Westphalia&quot;,
+       loc_city = &quot;North Rhine-Westphalia&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-9.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Saxony&quot;,
+       loc_city = &quot;Saxony&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-10.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Saxony-Anhalt&quot;,
+       loc_city = &quot;Saxony-Anhalt&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-11.png" width="1248" /></p>
+<pre class="r"><code>plotti(loc_data = &quot;sales_in_Schleswig-Holstein&quot;,
+       loc_city = &quot;Schleswig-Holstein&quot;)</code></pre>
+<p><img src="journal_files/figure-html/Plots%20-%20Challenge%201.2-12.png" width="1248" /></p>
 <div id="second-level-header" class="section level2">
 <h2><span class="header-section-number">1.1</span> Second level header</h2>
 <p>You can add more headers by adding more hashtags. These won’t be put into the table of contents</p>
@@ -427,7 +630,7 @@ div.tocify {
 </div>
 <div id="my-second-post-note-the-order" class="section level1">
 <h1><span class="header-section-number">2</span> My second post (note the order)</h1>
-<p>Last compiled: 2020-11-23</p>
+<p>Last compiled: 2020-11-25</p>
 <p>I’m writing this tutorial going from the top down. And, this is how it will be printed. So, notice the second post is second in the list. If you want your most recent post to be at the top, then make a new post starting at the top. If you want the oldest first, do, then keep adding to the bottom</p>
 </div>
 <div id="adding-r-stuff" class="section level1">
@@ -475,6 +678,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 <script>
 $(document).ready(function ()  {
