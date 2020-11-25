@@ -116,6 +116,16 @@ sales_by_state_and_year_tbl <- bike_orderlines_wrangled_tbl %>%
                                      suffix = " €"))
 
 
+for (jj in c(1:nrow(sales_by_state_tbl))) {
+
+  assign(
+    paste("sales_in_", 
+          sales_by_state_tbl[jj,1], 
+          sep = ''),
+    sales_by_state_and_year_tbl[sales_by_state_and_year_tbl$state == sales_by_state_tbl[[jj,1]],]
+        )
+}
+
 
 plotti <- function(loc_data, loc_city) {
   
@@ -142,20 +152,6 @@ plotti <- function(loc_data, loc_city) {
               x = "Year",
               y = "Revenue")
 }
-
-for (jj in c(1:nrow(sales_by_state_tbl))) {
-
-  assign(
-    paste("sales_in_", 
-          sales_by_state_tbl[jj,1], 
-          sep = ''),
-    sales_by_state_and_year_tbl[sales_by_state_and_year_tbl$state == sales_by_state_tbl[[jj,1]],]
-        )
-}
-
-```
-
-```{r Plots - Challenge 1.1, fig.width = 13, fig.height = 7}
 
 ## Sales by State - Visualize
 
@@ -184,9 +180,6 @@ sales_by_state_tbl %>%
     x = "State",
     y = "Revenue"
   )
-```
-
-```{r Plots - Challenge 1.2, fig.width = 13, fig.height = 7}
 
 ## Sales by State and Year - Visualize
  
