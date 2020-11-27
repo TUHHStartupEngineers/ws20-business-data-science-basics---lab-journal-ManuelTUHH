@@ -10,3 +10,10 @@ stringr
 forcats
 readxl
 lubridate
+xml2
+rvest
+xopen
+jsonlite
+glue
+stringi
+httr
