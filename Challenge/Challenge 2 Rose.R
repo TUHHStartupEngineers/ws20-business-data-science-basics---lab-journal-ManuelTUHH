@@ -44,9 +44,9 @@ read_categories <- function(nr){
 }
 
 pricelist_tbl <- map(c(1:9),read_categories) %>%
-  bind_rows()
+  bind_rows() %>% rename(Family = ...1, Category = value...2, Price = value...3) 
 
-pricelist_tbl
+pricelist_tbl[is.na(pricelist_tbl)] <- "Coming Soon"
 
 
 
