@@ -1,8 +1,0 @@
-"0",""
-"0","## Sales by State and Year - Visualize"
-"0"," "
-"0","plotti(loc_data = ""sales_in_Baden-Württemberg"","
-"0","       loc_city = ""Baden-Württemberg"")"
-"2","Fehler in plotti(loc_data = ""sales_in_Baden-Württemberg"", loc_city = ""Baden-Württemberg"") : 
-  unbenutztes Argument (loc_data = ""sales_in_Baden-Württemberg"")
-"

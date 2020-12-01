@@ -203,6 +203,7 @@ plotti(loc_data = "sales_in_Saxony-Anhalt",
        loc_city = "Saxony-Anhalt")
 plotti(loc_data = "sales_in_Schleswig-Holstein",
        loc_city = "Schleswig-Holstein")
+
 ```
 
 # Challenge 2 - Data Acquisition
@@ -244,6 +245,8 @@ ram_character <- ram_character %>%
   select(name, status, species, gender) %>% 
   add_column(ram_origin, ram_location) %>%
   arrange(species, status, origin, current_location)
+
+slice(ram_character, c(1:10))
 
 ```
 
@@ -301,10 +304,199 @@ pricelist_tbl <- map(c(1:9),read_categories) %>%
 
 pricelist_tbl[is.na(pricelist_tbl)] <- "Coming Soon"
 
-pricelist_tbl
+slice(pricelist_tbl, c(1:10))
+
+rm(bike_orderlines_joined_tbl, bike_orderlines_wrangled_tbl, bike_tbl, bikes_tbl, bikeshops_tbl, html,
+   orderlines_tbl, pricelist_tbl, ram_character, ram_location, ram_origin, sales_by_state_and_year_tbl,
+   sales_by_state_tbl, `sales_in_Baden-Württemberg`, sales_in_Bavaria, sales_in_Berlin, sales_in_Bremen,
+   sales_in_Hamburg, sales_in_Hesse, `sales_in_Lower Saxony`, `sales_in_Mecklenburg-Western Pomerania`, 
+   `sales_in_North Rhine-Westphalia`, sales_in_Saxony, `sales_in_Saxony-Anhalt`, `sales_in_Schleswig-Holstein`,
+   jj, url, plotti, Read_API, read_categories)
 
 ```
 
+# Challenge 3 - Data Wrangling with Data from 2014
+
+Last compiled: `r Sys.Date()`
+
+## Part 0 - Setting up Library and Data Tables
+
+```{r Challenge 3 - Data Wrangling Part 0}
+# Tidyverse
+library(tidyverse)
+library(vroom)
+
+# Data Table
+library(data.table)
+
+# Counter
+library(tictoc)
+
+####### set up Patent Assignee Table
+
+patent_assignee_col_types <- list(
+  patent_id = col_character(),
+  assignee_id = col_character()
+)
+
+path <- "00_data/03_patent_data_short/"
+
+patent_assignee_tbl <- vroom(
+  file       = glue("{path}patent_assignee.tsv"), 
+  delim      = "\t",
+  col_types = patent_assignee_col_types,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(patent_assignee_tbl)
+
+######## Set up Assignee Table
+
+assignee_col_types <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = glue("{path}assignee.tsv"), 
+  delim      = "\t",
+  col_types = assignee_col_types,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(assignee_tbl)
+
+########### Set up patent Table
+
+patent_col_types <- list(
+  id = col_character(),
+  type = col_character(),
+  num_claims = col_double()
+)
+
+patent_tbl <- vroom(
+  file       = glue("{path}patent.tsv"), 
+  delim      = "\t", 
+  col_types  = patent_col_types,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(patent_tbl)
+
+########### Set up uspc Table
+
+uspc_col_types <- list(
+  patent_id = col_character(),
+  mainclass_id = col_character(),
+  sequence = col_character()
+)
+
+uspc_tbl <- vroom(
+  file       = glue("{path}uspc.tsv"), 
+  delim      = "\t", 
+  col_types  = uspc_col_types,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(uspc_tbl)
+
+rm(patent_assignee_col_types, assignee_col_types, patent_col_types, uspc_col_types, path)
+```
+
+
+## Part 1 - Patent Dominance
+
+```{r Challenge 3 - Data Wrangling Part 1}
+
+# merge patent_assignee_tbl and assignee_tbl
+patent_dominance_tbl <- merge(x = patent_assignee_tbl, y = assignee_tbl,
+                          by.x = "assignee_id",
+                          by.y = "id",
+                          all.x = TRUE,
+                          all.y = FALSE)
+
+# Filter after type = 2 (only US companies)
+patent_dominance_US <- select(patent_dominance_tbl, organization, type, patent_id, assignee_id)[
+                               type == 2 & !is.na(organization)]
+                                 
+# Count each patent for each organization
+sorted_patent_dominance <- arrange(patent_dominance_US[, .N, by = organization],  desc(N))
+
+slice(sorted_patent_dominance, c(1:10))
+
+rm(sorted_patent_dominance)
+```
+
+## Part 2 - Patent Activity in May
+
+```{r Challenge 3 - Data Wrangling Part 2}
+
+# select only necessary columns of the patent table
+patent_tbl <- select(patent_tbl, id, date)
+
+# separate date into year | month | day
+#select only id & year and filter after month = 05 (May)
+patent_tbl <- separate(patent_tbl,
+                       col = date,
+                       into = c("year", "month", "day"),
+                       sep = "-", remove = FALSE)
+
+# Sort by May
+patent_tbl <- select(patent_tbl[month == "05"], id, month)
+
+
+# merge patent_dominance with patents
+patent_activity_tbl <- merge(x = patent_dominance_US, y = patent_tbl,
+                         by.x = "patent_id",
+                         by.y = "id",
+                         all.x = TRUE,
+                         all.y = FALSE)
+
+# delete all patents that are not from 2019
+sorted_patent_activity <- patent_activity_tbl[!is.na(month), .N, organization][order(-N)]
+
+slice(sorted_patent_activity, c(1:10))
+
+rm(patent_tbl, patent_activity_tbl, patent_assignee_tbl, patent_dominance_US, assignee_tbl)
+```
+
+## Part 3 - Patent Innovation
+
+```{r Challenge 3 - Data Wrangling Part 3}
+
+uspc_tbl <- uspc_tbl[sequence == 0]
+
+# select patent dominance worldwide
+patent_dominance_worldwide <- select(patent_dominance_tbl[
+  type > 1 & type < 4 & !is.na(organization)], organization, patent_id)
+
+# merge worldwide patent dominance table with uspc table
+comb_tbl <- merge(x = patent_dominance_worldwide, y = uspc_tbl,
+              by = "patent_id",
+              all = FALSE)
+              
+
+comb_tbl <- select(comb_tbl, organization, patent_id, mainclass_id)
+# Create List of top 10 worldwide patent owner
+top_ten_tbl <- select(patent_dominance_tbl, organization, type, patent_id)[
+  type > 1 & type < 4 & !is.na(organization), .N, organization]
+
+top_ten_tbl <- slice(top_ten_tbl[order(-N)], c(1:10))
+
+# merge top 10 with comb_tbl to Filter out Organizations which are not in the Top 10
+patent_innovation_tbl <- merge(x = comb_tbl, y = top_ten_tbl,
+                               by = "organization",
+                               all = FALSE)
+
+# Count used Mainclass ID's
+sorted_patent_innovation <- patent_innovation_tbl[, .N, mainclass_id][order(-N)]
+
+# Top 5 used mainclasses of Top 10 organizations
+
+slice(sorted_patent_innovation, c(1:10))
+
+```
 
 
 I'm writing this tutorial going from the top down. And, this is how it will be printed. So, notice the second post is second in the list. If you want your most recent post to be at the top, then make a new post starting at the top. If you want the oldest first, do, then keep adding to the bottom

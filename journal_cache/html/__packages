@@ -17,3 +17,6 @@ jsonlite
 glue
 stringi
 httr
+vroom
+data.table
+tictoc
