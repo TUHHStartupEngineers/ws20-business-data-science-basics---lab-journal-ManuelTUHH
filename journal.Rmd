@@ -16,6 +16,14 @@ output:
 knitr::opts_chunk$set(message=FALSE,warning=FALSE, cache=TRUE)
 ```
 
+# Instructions
+
+```{r instructions}
+
+"please notice, that libraries and Data Frames are setup either in the first part of the Challenge or in an extra part 0, before each Challenge, i.e. later Parts of the Challenge rely on the execution of the previous Parts."
+
+```
+
 # Challenge 1 - Sales Analysis
 
 Last compiled: `r Sys.Date()`
@@ -504,6 +512,7 @@ library(ggrepel)
 library(dplyr)
 library(maps)
 library(viridis)
+library(glue)
 
 # Reading in Covid Data
 covid_data_tbl <- read_csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv")
@@ -532,13 +541,15 @@ covid_data <- merge(x = country_tbl, y = covid_data_tbl,
   mutate(cumulative_cases = cumsum(cases)) 
 
 
-# Label Data of day before the last, because there was no Data for Spain
+# Label Data of day before the last, because somehow for the last day there is always data missing for Spain
 label_data <- head(tail(covid_data, 9), 5)
 
 # Data Visualization
 covid_data %>% ggplot(aes(x = date, y = cumulative_cases)) +
   
-  geom_line(size = 1, aes(group = country, color = country)) +
+  geom_line(size = 0.6, aes(group = country, color = country)) +
+  
+  scale_color_viridis(discrete=TRUE) +
   
   theme_minimal(base_size = 11) +
   
@@ -595,7 +606,7 @@ covid_data %>% ggplot(aes(x = date, y = cumulative_cases)) +
     
     rename("region" = "countriesAndTerritories") %>%
     
-    filter(!is.na("popData2019") & date < "2020-11-03" & !deaths < 1) %>%
+    filter(!is.na("popData2019") & !deaths < 1) %>%
     
     group_by(region, popData2019) %>%
     
